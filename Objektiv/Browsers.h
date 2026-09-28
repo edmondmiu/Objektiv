@@ -20,6 +20,9 @@
 @property NSString* defaultBrowserIdentifier;
 @property(readonly) NSString* systemDefaultBrowser;
 
+// The installed browser links should go to right now (never Objektiv itself).
+@property(readonly) NSURL* targetBrowserURL;
+
 - (BOOL) isHidden:(NSString*) browserIdentifier;
 - (void) hideABrowser:sender;
 - (void) unhideABrowser:sender;

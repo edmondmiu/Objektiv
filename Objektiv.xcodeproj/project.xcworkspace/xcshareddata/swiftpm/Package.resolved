@@ -1,0 +1,14 @@
+{
+  "originHash" : "1c81fa037b0ce5ca684e141da5f2d3966ac85f1580f4807c15d108c6bebb6525",
+  "pins" : [
+    {
+      "identity" : "masshortcut",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/cocoabits/MASShortcut",
+      "state" : {
+        "revision" : "6f2603c6b6cc18f64a799e5d2c9d3bbc467c413a"
+      }
+    }
+  ],
+  "version" : 3
+}

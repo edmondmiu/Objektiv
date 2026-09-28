@@ -1,0 +1,63 @@
+name: Objektiv
+options:
+  bundleIdPrefix: com.nthloop
+  deploymentTarget:
+    macOS: "13.0"
+  createIntermediateGroups: true
+packages:
+  MASShortcut:
+    url: https://github.com/cocoabits/MASShortcut
+    revision: 6f2603c6b6cc18f64a799e5d2c9d3bbc467c413a
+settings:
+  base:
+    MARKETING_VERSION: 0.7.0
+    CURRENT_PROJECT_VERSION: 3
+    CLANG_ENABLE_OBJC_ARC: YES
+    CLANG_ENABLE_MODULES: YES
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    ENABLE_HARDENED_RUNTIME: YES
+targets:
+  Objektiv:
+    type: application
+    platform: macOS
+    sources:
+      - path: Objektiv
+        excludes:
+          - Objektiv-Info.plist
+          - Objektiv-Prefix.pch
+          - Objektiv.iconset
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.nthloop.Objektiv
+        INFOPLIST_FILE: Objektiv/Objektiv-Info.plist
+        GCC_PREFIX_HEADER: Objektiv/Objektiv-Prefix.pch
+        OTHER_LDFLAGS: -ObjC
+    dependencies:
+      - package: MASShortcut
+      - sdk: ServiceManagement.framework
+      - sdk: UserNotifications.framework
+      - sdk: UniformTypeIdentifiers.framework
+  ObjektivTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - ObjektivTests
+      - Objektiv/BrowserResolver.m
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.nthloop.ObjektivTests
+        GENERATE_INFOPLIST_FILE: YES
+        HEADER_SEARCH_PATHS: $(SRCROOT)/Objektiv
+schemes:
+  Objektiv:
+    build:
+      targets:
+        Objektiv: all
+        ObjektivTests: [test]
+    test:
+      targets: [ObjektivTests]
+    run:
+      config: Debug
+    archive:
+      config: Release

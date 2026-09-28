@@ -60,7 +60,7 @@
 
         NSMenuItem *item = [self menuItemForBrowser:browser withHotkey:[NSString stringWithFormat:@"%d", count]];
         item.action = @selector(selectABrowser:);
-        item.state = browser.isDefault;
+        item.state = browser.isDefault ? NSControlStateValueOn : NSControlStateValueOff;
 
         [self addItem:item];
 
@@ -68,9 +68,9 @@
         NSMenuItem *alternate = [item copy];
 
         alternate.target = [Browsers sharedInstance];
-        alternate.keyEquivalentModifierMask = NSAlternateKeyMask;
+        alternate.keyEquivalentModifierMask = NSEventModifierFlagOption;
         [alternate setAlternate:YES];
-        alternate.state = NSMixedState;
+        alternate.state = NSControlStateValueMixed;
         alternate.mixedStateImage = [NSImage imageNamed:NSImageNameRemoveTemplate];
         alternate.toolTip = [NSString stringWithFormat:NSLocalizedString(@"Hide %@", nil), browser.name];
 
@@ -87,7 +87,7 @@
     NSMenuItem *submenuAlt = [[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"Hidden Items", nil)
                                                         action:nil keyEquivalent:@""];
     submenuAlt.submenu = hiddenMenu;
-    submenuAlt.keyEquivalentModifierMask = NSAlternateKeyMask;
+    submenuAlt.keyEquivalentModifierMask = NSEventModifierFlagOption;
     [submenuAlt setAlternate:YES];
     [self addItem:submenuAlt];
 
@@ -104,7 +104,7 @@
 
     item.target = appDelegate;
     item.image = [ImageUtils menuIconForAppId:browser.identifier];
-    item.state = NSOffState;
+    item.state = NSControlStateValueOff;
     item.representedObject = browser.identifier;
 
     return item;

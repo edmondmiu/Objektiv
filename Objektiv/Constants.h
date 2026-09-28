@@ -9,7 +9,7 @@
 #include <Foundation/Foundation.h>
 
 #define AppName @"Objektiv"
-#define AppDescription @"Objektiv is a simple menu-bar app that allows you to quickly toggle your default browser";
+#define AppDescription @"Objektiv is a simple menu-bar app that allows you to quickly toggle your default browser"
 
 #define PrefStartAtLogin @"BrowserSelectorStartAtLogin"
 #define PrefAutoHideIcon @"BrowserSelectorAutoHideIcon"
@@ -23,10 +23,10 @@
 
 #define PrefAreWeDefault @"AreWeDefaultAlertSuppress"
 
+#define PrefLoginItemMigrated @"LoginItemMigratedToSMAppService"
+
 #define NotificationTitle NSLocalizedString(@"%@ selected", @"Title of the notification")
 #define NotificationText NSLocalizedString(@"You selected %@ as your default browser using %@.", @"Notification text")
-
-#define kLocalFileUri @"file://locahost%@"
 
 #define StatusBarIconSize 16
 

@@ -14,10 +14,9 @@
 #import "ImageUtils.h"
 #import "BrowsersMenu.h"
 #import "OverlayWindow.h"
-#import "ZeroKitUtilities.h"
-#import <MASShortcut/Shortcut.h>
-#import "PFMoveApplication.h"
-#import <CDEvents.h>
+#import "LoginItem.h"
+#import "ApplicationsWatcher.h"
+@import MASShortcut;
 
 @interface AppDelegate()
 {
@@ -27,34 +26,18 @@
     NSUserDefaults *defaults;
     NSWorkspace *sharedWorkspace;
     OverlayWindow *overlayWindow;
-    CDEvents *cdEvents;
+    ApplicationsWatcher *applicationsWatcher;
     NSString *_defaultBrowser;
 }
 @end
 
 @implementation AppDelegate
 
-{} // TODO Figure out why the first pragma mark requires this empty block to show up
-
 #pragma mark - NSApplicationDelegate
-
-- (void)applicationWillFinishLaunching:(NSNotification *)aNotification
-{
-    NSAppleEventManager *em = [NSAppleEventManager sharedAppleEventManager];
-    [em setEventHandler:self
-            andSelector:@selector(getUrl:withReplyEvent:)
-          forEventClass:kInternetEventClass
-             andEventID:kAEGetURL];
-}
 
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification
 {
-
-    PFMoveToApplicationsFolderIfNecessary();
-
     NSLog(@"applicationDidFinishLaunching");
-
-//    [[SUUpdater sharedUpdater] checkForUpdatesInBackground];
 
     self.prefsController = [[PrefsController alloc] initWithWindowNibName:@"PrefsController"];
     sharedWorkspace = [NSWorkspace sharedWorkspace];
@@ -62,9 +45,13 @@
     browserMenu = [[BrowsersMenu alloc] init];
 
     NSLog(@"Setting defaults");
-    [ZeroKitUtilities registerDefaultsForBundle:[NSBundle mainBundle]];
     defaults = [NSUserDefaults standardUserDefaults];
-    
+    NSString *defaultsPath = [[NSBundle mainBundle] pathForResource:@"Defaults" ofType:@"plist"];
+    [defaults registerDefaults:[NSDictionary dictionaryWithContentsOfFile:defaultsPath]];
+
+    [UNUserNotificationCenter currentNotificationCenter].delegate = self;
+
+    [self syncLoginItem];
     [self displayAreWeDefaultMsg];
 
     [defaults addObserver:self
@@ -93,15 +80,14 @@
 - (void)watchApplicationsFolder
 {
     // Watch the /Applications & ~/Applications directories for a change
-    NSArray *urls = @[
-        [NSURL URLWithString:@"/Applications"],
-        [NSURL URLWithString:[NSHomeDirectoryForUser(NSUserName()) stringByAppendingString:@"/Applications"]]
+    NSArray *paths = @[
+        @"/Applications",
+        [NSHomeDirectory() stringByAppendingPathComponent:@"Applications"]
     ];
 
-    cdEvents = [[CDEvents alloc] initWithURLs:urls block:^(CDEvents *watcher, CDEvent *event) {
+    applicationsWatcher = [[ApplicationsWatcher alloc] initWithPaths:paths handler:^{
         [[Browsers sharedInstance] findBrowsersAsync];
     }];
-    cdEvents.ignoreEventsFromSubDirectories = YES;
 }
 
 - (BOOL)applicationShouldHandleReopen: (NSApplication *)application hasVisibleWindows: (BOOL)visibleWindows
@@ -150,15 +136,35 @@
     }
 }
 
+// The login item used to be stored with LSSharedFileList, which macOS ignores.
+// Carry the old preference over once, then mirror the real SMAppService state
+// so changes made in System Settings > Login Items are respected.
+- (void) syncLoginItem
+{
+    if (![defaults boolForKey:PrefLoginItemMigrated])
+    {
+        if ([defaults boolForKey:PrefStartAtLogin]) [LoginItem setEnabled:YES];
+        [defaults setBool:YES forKey:PrefLoginItemMigrated];
+    }
+    [defaults setBool:[LoginItem isEnabled] forKey:PrefStartAtLogin];
+}
+
 - (void) toggleLoginItem
 {
-    if ([defaults boolForKey:PrefStartAtLogin])
+    BOOL wanted = [defaults boolForKey:PrefStartAtLogin];
+    if (wanted == [LoginItem isEnabled]) return;
+
+    [LoginItem setEnabled:wanted];
+    if ([LoginItem requiresApproval]) [LoginItem openSystemSettings];
+
+    BOOL actual = [LoginItem isEnabled];
+    if (actual != wanted)
     {
-        [ZeroKitUtilities enableLoginItemForBundle:[NSBundle mainBundle]];
-    }
-    else
-    {
-        [ZeroKitUtilities disableLoginItemForBundle:[NSBundle mainBundle]];
+        // Registration failed; put the checkbox back to the real state.
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self->defaults setBool:actual forKey:PrefStartAtLogin];
+            [self.prefsController refreshUI];
+        });
     }
 }
 
@@ -183,17 +189,16 @@
     NSStatusBar *statusBar = [NSStatusBar systemStatusBar];
 
     statusBarIcon = [statusBar statusItemWithLength:NSVariableStatusItemLength];
-    statusBarIcon.toolTip = AppDescription;
+    statusBarIcon.button.toolTip = AppDescription;
     [self updateStatusBarIcon];
-    statusBarIcon.highlightMode = YES;
 
     statusBarIcon.menu = browserMenu;
 }
 
-- (void) updateStatusBarIcon;
+- (void) updateStatusBarIcon
 {
     NSString *identifier = [Browsers sharedInstance].defaultBrowserIdentifier;
-    statusBarIcon.image = [ImageUtils statusBarIconForAppId:identifier];
+    statusBarIcon.button.image = [ImageUtils statusBarIconForAppId:identifier];
 
     if ([identifier isEqualToString:_defaultBrowser]) return;
     _defaultBrowser = identifier;
@@ -222,6 +227,7 @@
 {
     NSLog(@"showAndHideIcon");
     [self createStatusBarIcon];
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(destroyStatusBarIcon) object:nil];
     if ([defaults boolForKey:PrefAutoHideIcon])
     {
         [self performSelector:@selector(destroyStatusBarIcon) withObject:nil afterDelay:10];
@@ -230,6 +236,7 @@
 
 - (void) showAbout
 {
+    [self activate];
     [[NSApplication sharedApplication] orderFrontStandardAboutPanel:nil];
 }
 
@@ -238,29 +245,51 @@
     [NSApp terminate:nil];
 }
 
+- (void) activate
+{
+    if (@available(macOS 14.0, *)) {
+        [NSApp activate];
+    } else {
+        [NSApp activateIgnoringOtherApps:YES];
+    }
+}
+
 #pragma mark - Utilities
 
 - (void) showNotification:(NSString *)browserIdentifier
 {
-    NSString *browserPath = [sharedWorkspace absolutePathForAppBundleWithIdentifier:browserIdentifier];
-    NSString *browserName = [[NSFileManager defaultManager] displayNameAtPath:browserPath];
-    NSUserNotification *notification = [[NSUserNotification alloc] init];
-    notification.title = [NSString stringWithFormat:NotificationTitle, browserName];
-    notification.informativeText = [NSString stringWithFormat:NotificationText, browserName, AppName];
-    NSUserNotificationCenter* center = [NSUserNotificationCenter defaultUserNotificationCenter];
-    center.delegate = self;
-    [center deliverNotification:notification];
+    NSURL *browserURL = [sharedWorkspace URLForApplicationWithBundleIdentifier:browserIdentifier];
+    NSString *browserName = browserURL
+        ? [[NSFileManager defaultManager] displayNameAtPath:browserURL.path]
+        : browserIdentifier;
+
+    UNMutableNotificationContent *content = [[UNMutableNotificationContent alloc] init];
+    content.title = [NSString stringWithFormat:NotificationTitle, browserName];
+    content.body = [NSString stringWithFormat:NotificationText, browserName, AppName];
+
+    UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
+    [center requestAuthorizationWithOptions:UNAuthorizationOptionAlert
+                          completionHandler:^(BOOL granted, NSError *error) {
+        if (!granted) return;
+        UNNotificationRequest *request = [UNNotificationRequest requestWithIdentifier:@"browser-selected"
+                                                                              content:content
+                                                                              trigger:nil];
+        [center addNotificationRequest:request withCompletionHandler:nil];
+    }];
 }
 
-- (BOOL)userNotificationCenter:(NSUserNotificationCenter *)center shouldPresentNotification:(NSUserNotification *)notification
+- (void)userNotificationCenter:(UNUserNotificationCenter *)center
+       willPresentNotification:(UNNotification *)notification
+         withCompletionHandler:(void (^)(UNNotificationPresentationOptions))completionHandler
 {
-    return YES;
+    completionHandler(UNNotificationPresentationOptionBanner | UNNotificationPresentationOptionList);
 }
 
 -(void)displayAreWeDefaultMsg
 {
     if([defaults boolForKey:PrefAreWeDefault]) return;
-    if([[[NSBundle mainBundle] bundleIdentifier] caseInsensitiveCompare:[[Browsers sharedInstance] systemDefaultBrowser]] == NSOrderedSame) {
+    NSString *systemDefault = [[Browsers sharedInstance] systemDefaultBrowser];
+    if(systemDefault && [[[NSBundle mainBundle] bundleIdentifier] caseInsensitiveCompare:systemDefault] == NSOrderedSame) {
         return;
     }
     
@@ -272,43 +301,36 @@
     NSButton *cancelButton = [alert addButtonWithTitle:NSLocalizedString(@"Cancel", @"Cancel")];
     [cancelButton setKeyEquivalent:@"\e"];
     
+    [self activate];
     if ([alert runModal] == NSAlertFirstButtonReturn) {
         [[Browsers sharedInstance] setOurselvesAsDefaultBrowser];
     }
     
-    if ([[alert suppressionButton] state] == NSOnState) {
+    if ([[alert suppressionButton] state] == NSControlStateValueOn) {
         NSLog(@"Suppress");
         [defaults setBool:YES forKey:PrefAreWeDefault];
     }
 }
 
-#pragma mark - File Handlers
+#pragma mark - URL & File Handlers
 
-- (BOOL)application:(NSApplication *)theApplication openFile:(NSString *)filename
+// Receives both http(s) links and HTML files opened with Objektiv.
+- (void)application:(NSApplication *)application openURLs:(NSArray<NSURL *> *)urls
 {
-    [self openWithBrowser:[NSString stringWithFormat:kLocalFileUri, filename]];
-    return YES;
-}
+    NSURL *browserURL = [[Browsers sharedInstance] targetBrowserURL];
+    if (!browserURL)
+    {
+        NSLog(@"No browser available to open %@", urls);
+        return;
+    }
 
-- (void)getUrl:(NSAppleEventDescriptor *)event
-withReplyEvent:(NSAppleEventDescriptor *)replyEvent
-{
-    [self openWithBrowser:[[event paramDescriptorForKeyword:keyDirectObject]
-                           stringValue]];
-}
-
-- (void)openWithBrowser:(NSString*)location
-{
-    
-    NSArray *urls = [NSArray arrayWithObject:[NSURL URLWithString:location]];
-    
-    int options = NSWorkspaceLaunchAsync;
-    
-    [[NSWorkspace sharedWorkspace] openURLs: urls
-                    withAppBundleIdentifier: [[Browsers sharedInstance] defaultBrowserIdentifier]
-                                    options: options
-             additionalEventParamDescriptor: nil
-                          launchIdentifiers: nil];
+    NSWorkspaceOpenConfiguration *configuration = [NSWorkspaceOpenConfiguration configuration];
+    [sharedWorkspace openURLs:urls
+         withApplicationAtURL:browserURL
+                configuration:configuration
+            completionHandler:^(NSRunningApplication *app, NSError *error) {
+        if (error) NSLog(@"Opening %@ in %@ failed: %@", urls, browserURL, error);
+    }];
 }
 
 @end

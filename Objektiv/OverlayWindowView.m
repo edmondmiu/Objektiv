@@ -23,22 +23,22 @@ const NSUInteger H_PADDING = 16;
 const NSUInteger BOX_PADDING = 16;
 
 #pragma mark - properties
-@synthesize fillColor = _fillColor;
--(NSColor *)fillColor
+@synthesize overlayFillColor = _overlayFillColor;
+-(NSColor *)overlayFillColor
 {
-    if (!_fillColor) {
-        _fillColor = [NSColor colorWithCalibratedRed:0xFF green:0xFF blue:0xFF alpha:0.8];
+    if (!_overlayFillColor) {
+        _overlayFillColor = [NSColor colorWithWhite:1 alpha:0.8];
     }
-    return _fillColor;
+    return _overlayFillColor;
 }
 
-@synthesize strokeColor = _strokeColor;
--(NSColor *)strokeColor
+@synthesize overlayStrokeColor = _overlayStrokeColor;
+-(NSColor *)overlayStrokeColor
 {
-    if (!_strokeColor) {
-        _strokeColor = [self colorWithRed:0 green:0x66 blue:0xBB alpha:1];
+    if (!_overlayStrokeColor) {
+        _overlayStrokeColor = [self colorWithRed:0 green:0x66 blue:0xBB alpha:1];
     }
-    return _strokeColor;
+    return _overlayStrokeColor;
 }
 
 #pragma mark - NSView
@@ -47,11 +47,12 @@ const NSUInteger BOX_PADDING = 16;
 {
     self = [super initWithFrame:frame];
     if (self) {
-        appDelegate = [[NSApplication sharedApplication] delegate];
+        appDelegate = (AppDelegate *)[[NSApplication sharedApplication] delegate];
         self.title = @"";
-        [self setBorderType:NSNoBorder];
+        self.titlePosition = NSNoTitle;
         [self setContentViewMargins:NSMakeSize(0, 0)];
         [self setBoxType:NSBoxCustom];
+        [self setBorderWidth:0];
         [self setBorderColor:[NSColor clearColor]];
         [self setFillColor:[NSColor clearColor]];
         [self setAutoresizesSubviews:NO];
@@ -64,11 +65,11 @@ const NSUInteger BOX_PADDING = 16;
 {
     dirtyRect = CGRectInset(dirtyRect, 0.5, 0.5);
     NSBezierPath *path = [NSBezierPath bezierPathWithRoundedRect:dirtyRect xRadius:16 yRadius:16];
-    [self.fillColor set];
+    [self.overlayFillColor set];
     [path fill];
 
     [path setLineWidth:2];
-    [self.strokeColor set];
+    [self.overlayStrokeColor set];
     [path stroke];
 }
 
@@ -123,7 +124,7 @@ const NSUInteger BOX_PADDING = 16;
 
     button.image = [self imageForBrowser:browser withBadge:position + 1];
     button.keyEquivalent = [NSString stringWithFormat:@"%ld", position + 1];
-    button.attributedTitle = [self titleForButton:browser.name inColor:self.strokeColor];
+    button.attributedTitle = [self titleForButton:browser.name inColor:self.overlayStrokeColor];
     button.target = self;
     button.action = @selector(buttonClicked:);
 
@@ -131,12 +132,12 @@ const NSUInteger BOX_PADDING = 16;
     cell.imagePosition = NSImageAbove;
 
     cell.focusRingType = NSFocusRingTypeNone;
-    cell.backgroundColor = self.fillColor;
+    cell.backgroundColor = self.overlayFillColor;
     [cell setBezeled:NO];
     [cell setBordered:NO];
     [cell setTransparent:NO];
     [cell setSelectable:NO];
-    [cell setButtonType:NSMomentaryPushInButton];
+    [cell setButtonType:NSButtonTypeMomentaryPushIn];
     cell.showsStateBy = NSPushInCellMask;
     cell.highlightsBy = NSContentsCellMask;
     cell.representedObject = browser.identifier;
@@ -146,34 +147,34 @@ const NSUInteger BOX_PADDING = 16;
 
 -(NSImage*) imageForBrowser:(BrowserItem*)browser withBadge:(NSUInteger)position
 {
-
-    NSImage *image = [[ImageUtils fullSizeIconForAppId:browser.identifier
-                                             withSize:NSMakeSize(ICON_SIZE, ICON_SIZE)] copy];
-
-    if (browser.isDefault)
-    {
-        [image lockFocus];
-        NSImage *selectionImage = [NSImage imageNamed:NSImageNameMenuOnStateTemplate];
-        selectionImage = [ImageUtils tintInputImage:selectionImage toColor:self.strokeColor];
-        [selectionImage drawAtPoint:CGPointZero fromRect:CGRectZero operation:NSCompositeHighlight fraction:1];
-        [image unlockFocus];
-    }
-
-    if (position > 9 || browser.isDefault) return image;
-
+    NSImage *icon = [ImageUtils fullSizeIconForAppId:browser.identifier
+                                            withSize:NSMakeSize(ICON_SIZE, ICON_SIZE)];
+    NSColor *strokeColor = self.overlayStrokeColor;
+    NSImage *selectionImage = browser.isDefault
+        ? [ImageUtils tintInputImage:[NSImage imageNamed:NSImageNameMenuOnStateTemplate] toColor:strokeColor]
+        : nil;
+    BOOL showBadge = position <= 9 && !browser.isDefault;
     NSString *badge = [NSString stringWithFormat:@"%ld", position];
-    [image lockFocus];
 
-    NSRect rect = NSMakeRect(0, 0, 20, 20);
-    NSBezierPath *path = [NSBezierPath bezierPathWithRoundedRect:rect xRadius:4 yRadius:4];
-    [self.strokeColor set];
-    [path fill];
+    return [NSImage imageWithSize:icon.size flipped:NO drawingHandler:^BOOL(NSRect rect) {
+        [icon drawInRect:rect];
 
-    [badge drawInRect:CGRectInset(rect, 7, 2)
-       withAttributes:@{NSForegroundColorAttributeName : [NSColor whiteColor]}];
+        if (selectionImage)
+        {
+            [selectionImage drawAtPoint:NSZeroPoint fromRect:NSZeroRect
+                              operation:NSCompositingOperationSourceOver fraction:1];
+        }
 
-    [image unlockFocus];
-    return image;
+        if (showBadge)
+        {
+            NSRect badgeRect = NSMakeRect(0, 0, 20, 20);
+            [strokeColor set];
+            [[NSBezierPath bezierPathWithRoundedRect:badgeRect xRadius:4 yRadius:4] fill];
+            [badge drawInRect:CGRectInset(badgeRect, 7, 2)
+               withAttributes:@{NSForegroundColorAttributeName : [NSColor whiteColor]}];
+        }
+        return YES;
+    }];
 }
 
 
@@ -192,7 +193,7 @@ const NSUInteger BOX_PADDING = 16;
     [title addAttribute:NSFontAttributeName
                   value:font
                   range:range];
-    [title setAlignment:NSCenterTextAlignment range:range];
+    [title setAlignment:NSTextAlignmentCenter range:range];
     [title fixAttributesInRange:range];
 
     return [self truncateString:title toWidth:ICON_SIZE];

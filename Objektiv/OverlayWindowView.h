@@ -17,7 +17,7 @@ extern const NSUInteger TEXT_HEIGHT;
 extern const NSUInteger H_PADDING;
 extern const NSUInteger BOX_PADDING;
 
-@property(readonly, nonatomic) NSColor* fillColor;
-@property(readonly, nonatomic) NSColor* strokeColor;
+@property(readonly, nonatomic) NSColor* overlayFillColor;
+@property(readonly, nonatomic) NSColor* overlayStrokeColor;
 
 @end

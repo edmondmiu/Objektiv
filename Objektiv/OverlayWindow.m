@@ -13,6 +13,7 @@
 #import "Browsers.h"
 #import "OverlayWindowView.h"
 #import <Carbon/Carbon.h>
+#import <QuartzCore/QuartzCore.h>
 
 @implementation OverlayWindow {
 
@@ -27,13 +28,13 @@
 {
     NSLog(@"Initializing OverlayWindow");
     self = [super initWithContentRect:CGRectZero
-                            styleMask:NSBorderlessWindowMask | NSNonactivatingPanelMask
+                            styleMask:NSWindowStyleMaskBorderless | NSWindowStyleMaskNonactivatingPanel
                               backing:NSBackingStoreBuffered
                                 defer:NO];
 
-    self.delegate = self;
     if (self) {
-        appDelegate = [NSApplication sharedApplication].delegate;
+        self.delegate = self;
+        appDelegate = (AppDelegate *)[NSApplication sharedApplication].delegate;
         [self setLevel:NSFloatingWindowLevel];
         [self setBackgroundColor:[NSColor clearColor]];
         [self setFloatingPanel:YES];

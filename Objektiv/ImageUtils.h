@@ -6,8 +6,7 @@
 //  Copyright (c) 2012 nth loop. All rights reserved.
 //
 
-#import <Foundation/Foundation.h>
-#import <QuartzCore/QuartzCore.h>
+#import <Cocoa/Cocoa.h>
 
 @interface ImageUtils : NSObject
 
