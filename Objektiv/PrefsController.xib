@@ -127,7 +127,6 @@
         </window>
         <toolbarItem implicitItemIdentifier="NSToolbarShowFontsItem" id="163"/>
         <toolbarItem implicitItemIdentifier="NSToolbarShowFontsItem" id="164"/>
-        <customObject id="175" customClass="SUUpdater"/>
     </objects>
     <resources>
         <image name="objektiv-overlay" width="580" height="400"/>

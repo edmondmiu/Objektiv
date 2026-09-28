@@ -18,7 +18,6 @@
 #import <MASShortcut/Shortcut.h>
 #import "PFMoveApplication.h"
 #import <CDEvents.h>
-#import <Sparkle/Sparkle.h>
 
 @interface AppDelegate()
 {

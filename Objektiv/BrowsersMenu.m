@@ -11,7 +11,6 @@
 #import "AppDelegate.h"
 #import "BrowserItem.h"
 #import "Browsers.h"
-#import <Sparkle/Sparkle.h>
 
 @implementation BrowsersMenu {
     @private
