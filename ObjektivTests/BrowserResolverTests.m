@@ -57,4 +57,10 @@ static NSString *const Own = @"com.nthloop.Objektiv";
     XCTAssertNil([BrowserResolver targetForSelected:nil installed:onlySelf ownIdentifier:Own]);
 }
 
+- (void)testDisplayNameStripsAppExtension
+{
+    NSURL *url = [NSURL fileURLWithPath:@"/nonexistent/Google Chrome Beta.app"];
+    XCTAssertEqualObjects([BrowserResolver displayNameForApplicationAtURL:url], @"Google Chrome Beta");
+}
+
 @end

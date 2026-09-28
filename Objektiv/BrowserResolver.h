@@ -28,6 +28,9 @@ NS_ASSUME_NONNULL_BEGIN
                                installed:(NSArray<NSString *> *)installed
                            ownIdentifier:(NSString *)ownIdentifier;
 
+// User-facing app name without the ".app" extension, whatever the Finder setting.
++ (NSString *)displayNameForApplicationAtURL:(NSURL *)url;
+
 @end
 
 NS_ASSUME_NONNULL_END

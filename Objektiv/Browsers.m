@@ -159,7 +159,6 @@
 - (NSArray*) scanBrowsers
 {
     NSLog(@"Find browsers");
-    NSFileManager *defaultFileManager = [NSFileManager defaultManager];
     NSWorkspace *sharedWorkspace = [NSWorkspace sharedWorkspace];
     NSArray *identifiers = [BrowserResolver filterIdentifiers:[sharedWorkspace installedBrowserIdentifiers]
                                                     blacklist:internalBlacklist
@@ -175,11 +174,7 @@
             continue;
         }
 
-        NSString *browserName = [defaultFileManager displayNameAtPath:browserURL.path];
-        if (!browserName) {
-            NSLog(@"Can't find name of browser: %@", browser);
-            continue;
-        }
+        NSString *browserName = [BrowserResolver displayNameForApplicationAtURL:browserURL];
 
         BrowserItem *item = [[BrowserItem alloc] initWithApplicationId:browser name:browserName path:browserURL.path];
         item.hidden = [self isHidden:browser];

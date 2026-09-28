@@ -9,6 +9,7 @@
 #import "AppDelegate.h"
 #import "BrowserItem.h"
 #import "Browsers.h"
+#import "BrowserResolver.h"
 #import "Constants.h"
 #import "PrefsController.h"
 #import "ImageUtils.h"
@@ -260,7 +261,7 @@
 {
     NSURL *browserURL = [sharedWorkspace URLForApplicationWithBundleIdentifier:browserIdentifier];
     NSString *browserName = browserURL
-        ? [[NSFileManager defaultManager] displayNameAtPath:browserURL.path]
+        ? [BrowserResolver displayNameForApplicationAtURL:browserURL]
         : browserIdentifier;
 
     UNMutableNotificationContent *content = [[UNMutableNotificationContent alloc] init];

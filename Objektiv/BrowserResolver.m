@@ -55,4 +55,13 @@
     return nil;
 }
 
++ (NSString *)displayNameForApplicationAtURL:(NSURL *)url
+{
+    NSString *name = nil;
+    [url getResourceValue:&name forKey:NSURLLocalizedNameKey error:NULL];
+    if (!name.length) name = url.lastPathComponent;
+    if ([name.pathExtension caseInsensitiveCompare:@"app"] == NSOrderedSame) name = name.stringByDeletingPathExtension;
+    return name;
+}
+
 @end
