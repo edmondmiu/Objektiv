@@ -15,7 +15,11 @@ Install
 
 1. Download `Objektiv.zip` from the [latest release][releases].
 2. Unzip it and drag **Objektiv.app** into your Applications folder.
-3. Open it. When asked, click **Set As Default**, then confirm in the macOS
+3. Open it. The release isn't notarised by Apple, so the first time macOS
+   will say it can't verify the app. Click **Done**, then go to
+   System Settings > Privacy & Security, scroll down and click **Open Anyway**.
+   (Or run `xattr -dr com.apple.quarantine /Applications/Objektiv.app` once.)
+4. When Objektiv asks, click **Set As Default**, then confirm in the macOS
    dialog that follows.
 
 Requires macOS 13 (Ventura) or later. The download is a universal app, so it
@@ -74,11 +78,11 @@ MASShortcut is pulled in through Swift Package Manager.
     xcodebuild -project Objektiv.xcodeproj -scheme Objektiv -configuration Release -derivedDataPath build build
     xcodebuild -project Objektiv.xcodeproj -scheme Objektiv -derivedDataPath build test
 
-The built app is at `build/Build/Products/Release/Objektiv.app`. Local builds
-are ad-hoc signed, which is fine on the Mac that built them.
+The built app is at `build/Build/Products/Release/Objektiv.app`. Builds are
+ad-hoc signed, which is fine on the Mac that built them.
 
-To make a signed, notarised release zip (needs a Developer ID certificate and a
-`notarytool` keychain profile):
+To make a release zip, run `scripts/release.sh`. Pass a Developer ID identity
+and a `notarytool` keychain profile to sign and notarise it instead:
 
     scripts/release.sh "Developer ID Application: Your Name (TEAMID)" your-notary-profile
 
